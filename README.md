@@ -14,4 +14,6 @@ A sample of the batch data is publicly available in an s3 bucket `s3://tecton.ai
 
 **Data preview**
 
-|    | user_id           | transaction_id                   | category      |   amt |   is_fraud | merchant                           |   merch_lat |   merch_long | timestamp           |\n|---:|:------------------|:---------------------------------|:--------------|------:|-----------:|:-----------------------------------|------------:|-------------:|:--------------------|\n|  0 | user_884240387242 | 3eb88afb219c9a10f5130d0b89a13451 | gas_transport | 68.23 |          0 | fraud_Kutch, Hermiston and Farrell |       42.71 |     -78.3386 | 2023-06-20 10:26:41 |
+| user_id           | transaction_id                   | category      |   amt |   is_fraud | merchant                           |   merch_lat |   merch_long | timestamp           |
+|------------------|---------------------------------|--------------|------|-----------|-----------------------------------|------------|-------------|--------------------|
+| user_884240387242 | 3eb88afb219c9a10f5130d0b89a13451 | gas_transport | 68.23 |          0 | fraud_Kutch, Hermiston and Farrell |       42.71 |     -78.3386 | 2023-06-20 102641 |
