@@ -5,7 +5,7 @@ This repository contains curated examples of features using Tecton. Use this in 
 
 ## [1. Fraud Detection](Fraud)
 
-Build powerful batch, streaming and real-time features to use in fraud detection models. https://www.tecton.ai/solutions/
+Build powerful batch, streaming and real-time features to capture fraudulent patterns and detect fraud in real-time. https://www.tecton.ai/solutions/
 
 ### [Data sources](Fraud/data_sources.py)
 
