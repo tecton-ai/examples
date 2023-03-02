@@ -1,6 +1,7 @@
 from Fraud.features.user_last_transaction_location import user_last_transaction_location
 from tecton.types import String, Float64, Field
 from tecton import on_demand_feature_view, RequestSource
+import constants
 
 request_schema = [Field('user_id', String),
                 Field('merch_lat', Float64),
