@@ -1,19 +1,23 @@
 # Tecton Feature Examples
 
-This repository contains curated examples of features using Tecton. Use this in your own projects by switching the sample data sources with your own data. 
+This repository contains curated examples of Tecton-based feature definitions. Use these examples in your own projects by replacing the sample data sources with your own data.
 
 
 ## [1. Fraud Detection](Fraud)
 
-Build powerful batch, streaming and real-time features to capture fraudulent patterns and detect fraud in real-time. https://www.tecton.ai/solutions/
+Build powerful batch, streaming, and real-time features to capture fraudulent patterns and detect fraud in real-time. https://www.tecton.ai/solutions/
 
 ### [Data sources](Fraud/data_sources.py)
 
-The data used as input for these features is transactional data. The features are built from historical transactions data (e.g files in s3, refreshed daily), transaction events streamed through Kinesis as well as real-time data coming directly from the current transaction being processed.
+The data used as input for these features is transactional data. The features are built from historical transactions data (e.g files in s3, refreshed daily), transaction events streamed through Kinesis, as well as real-time data coming directly from the current transaction being processed.
 
-A sample of the batch data is publicly available in an s3 bucket `s3://tecton.ai.public/tutorials/fraud_demo/transactions/`
+A sample of the batch data is publicly available in an s3 bucket 
+ `s3://tecton.ai.public/tutorials/fraud_demo/transactions/`
+
 
 **Data preview**
+
+Below is a preview of the data, these are the required attributes that you will need to map your input data to in order to reuse these features:
 
 | user_id           | transaction_id                   | category      |   amt |   is_fraud | merchant                           |   merch_lat |   merch_long | timestamp           |
 |------------------|---------------------------------|--------------|------|-----------|-----------------------------------|------------|-------------|--------------------|
@@ -24,7 +28,7 @@ A sample of the batch data is publicly available in an s3 bucket `s3://tecton.ai
 
 #### [Standard deviation of user spend (Batch)](Fraud/features/user_dollar_spend_aggregates.py)
 
-Measure how much a user's recent transactions deviate from their usual behavior to detect any suspicious activity on a credit card. This feature computes the standard deviation of a user's transaction amounts in the last 10, 30 and 60 days prior to the current transaction day, it is refreshed daily. 
+Measure how much a user's recent transactions deviate from their usual behavior to detect any suspicious activity on a credit card. This feature computes the standard deviation of a user's transaction amounts in the last 10, 30, and 60 days prior to the current transaction day. This feature is refreshed daily.
 
 ```python
 @batch_feature_view(
@@ -54,7 +58,7 @@ def user_dollar_spend(transactions):
 
 #### [User-Merchant transaction count (Streaming)](Fraud/features/user_merchant_transaction_counts.py)
 
-A common pattern for fraudsters is to put many small charges on a credit card in a short amount of time after stealing its information, the only way to capture this pattern is to have near real-time feature freshness. This feature computes the number of transactions on a user's card at the same merchant in the last 30 minutes prior to the current transaction time. It is computed from streaming events data.
+A common pattern for fraudsters is to put many small charges on a stolen credit card in a short amount of time. The only way to capture this pattern is to have near real-time feature freshness. This feature computes the number of transactions on a user's card at the same merchant in the last 30 minutes prior to the current transaction time. It is computed from streaming events data.
 
 ```python
 @stream_feature_view(
@@ -77,8 +81,7 @@ def user_merchant_transactions_count(transactions_stream):
 
 #### [Distance between current and last transaction (On-demand + Streaming)](Fraud/features/user_distance_previous_location.py)
 
-Leverage geolocation features to detect if a user's card is used in an unusual, abnormally far location compared to the last transaction on the card. Combine and compare real-time and pre-computed features to capture new fraud patterns! 
-This feature computes the distance between the current transaction location and the user's previous transaction location using Python. 
+Leverage geolocation features to detect if a user's card is used in an unusual, abnormally far location compared to the last transaction on the card. Combine and compare real-time and pre-computed features to capture new fraud patterns. This feature computes the distance between the current transaction location and the user's previous transaction location using Python.
 
 ```python
 @on_demand_feature_view(
