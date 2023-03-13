@@ -78,7 +78,7 @@ def ratings_stream_config(spark):
         "region": "us-west-2",
         "shardFetchInterval": "30s",
         "initialPosition": "earliest",
-        "roleArn": "arn:aws:iam::[REDACTED]",
+        "roleArn": "arn:aws:iam::706752053316:role/tecton-demo-fraud-data-cross-account-kinesis-ro",
     }
     reader = spark.readStream.format("kinesis").options(**options)
     ratings_stream_df = reader.load()
