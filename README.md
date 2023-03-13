@@ -125,8 +125,11 @@ Build a state of the art online book recommender system and improve customer eng
 The data used for these examples is adapted from publicly available data (https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset). While this particular examples aims at recommending relevant books to users, it is applicable and can very easily be adapted to other use cases/product types.
 
 A sample of the batch data is publicly available in an s3 bucket
+
 `s3://tecton-demo-data/apply-book-recsys/users.parquet`
+
 `s3://tecton-demo-data/apply-book-recsys/books_v3.parquet`
+
 `s3://tecton-demo-data/apply-book-recsys/ratings.parquet`
 
 
