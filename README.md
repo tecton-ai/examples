@@ -117,7 +117,7 @@ def distance_previous_transaction(transaction_request, user_last_transaction_loc
 
 ```
 
-## [2. Recommender Systems](Recommender_system)
+## [2. Recommender System](Recommender_system)
 
 Build a state of the art online book recommender system and improve customer engagement by combining batch product, user and user-product interaction data with near real-time interaction data coming from streaming events. 
 
@@ -132,6 +132,4 @@ Column isbn is a book identifier column.
 
 |       isbn | book_title                                                     | book_author                   |   year_of_publication | publisher        | summary                                                            | language   | category                 | created_at          |
 |-----------|---------------------------------------------------------------|------------------------------|----------------------|-----------------|-------------------------------------------------------------------|-----------|-------------------------|--------------------|
-| 0000913154 | The Way Things Work An Illustrated Encyclopedia of Technology | C. van Amerongen (translator) |                  1967 | Simon & Schuster | Scientific principles, inventions, and chemical, mechanical, and   | en         | Technology & Engineering | 2022-03-13 000000 |
-|            |                                                                |                               |                       |                  | industrial processes are explained for the general reader with the |            |                          |                     |
-|            |                                                                |                               |                       |                  | help of drawings and diagrams                                      |            |                          |                     |
+| 0000913154 | The Way Things Work An Illustrated Encyclopedia of Technology | C. van Amerongen (translator) |                  1967 | Simon & Schuster | Scientific principles, inventions, and chemical, mechanical, and industrial ...  | en         | Technology & Engineering | 2022-03-13 000000 |
