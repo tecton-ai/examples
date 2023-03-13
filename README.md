@@ -70,8 +70,7 @@ A common pattern for fraudsters is to put many small charges on a stolen credit 
     aggregations=[
         Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
     ],
-    feature_start_time=datetime(2022,5, 1),
-    batch_schedule=timedelta(days=1)
+    feature_start_time=datetime(2022,5, 1)
 
 )
 def user_merchant_transactions_count(transactions_stream):
