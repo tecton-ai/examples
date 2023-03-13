@@ -217,9 +217,9 @@ def user_recent_ratings(ratings_with_book_metadata):
 
 ```
 
-#### [User ratings for similar books (On-demand + Batch)](Recommender_system/features/user_recent_ratings.py)
+#### [User ratings for similar books (On-demand + Batch + Streaming)](Recommender_system/features/user_ratings_similar_to_candidate_book.py)
 
-Blend real-time data and pre-computed batch and streaming features in order to capture the current users' past interactions and ratings with books from the same author and category as the current candidate book.
+Blend real-time data and pre-computed batch and streaming features in order to capture the current users' past interactions and ratings with books from the same author and category as the current candidate book. This feature leverages Python to combine batch and streaming features and apply additional logic.
 
 
 ```python
