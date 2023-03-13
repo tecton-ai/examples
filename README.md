@@ -119,7 +119,7 @@ def distance_previous_transaction(transaction_request, user_last_transaction_loc
 
 ## [2. Recommender System](Recommender_system)
 
-Build a state of the art online book recommender system and improve customer engagement by combining batch product, user and user-product interaction data with near real-time interaction data coming from streaming events. 
+Build a state of the art online book recommender system and improve customer engagement by combining historical product, user and user-product interaction data with session-based, near real-time interaction data coming from streaming events. 
 
 ### [Data sources](Recommender_system/data_sources.py)
 
@@ -128,8 +128,144 @@ The data used for these examples is adapted from publicly available data (https:
 **Data Preview**
 
 **Book metadata**
+
 Column isbn is a book identifier column.
 
 |       isbn | book_title                                                     | book_author                   |   year_of_publication | publisher        | summary                                                            | language   | category                 | created_at          |
 |-----------|---------------------------------------------------------------|------------------------------|----------------------|-----------------|-------------------------------------------------------------------|-----------|-------------------------|--------------------|
 | 0000913154 | The Way Things Work An Illustrated Encyclopedia of Technology | C. van Amerongen (translator) |                  1967 | Simon & Schuster | Scientific principles, inventions, and chemical, mechanical, and industrial ...  | en         | Technology & Engineering | 2022-03-13 000000 |
+
+**Users metadata**
+
+Column user_id is a the user identifier column.
+
+
+|   user_id | location                  |   age | city     | state      | country   | signup_date                |
+|----------|--------------------------|------|---------|-----------|----------|---------------------------|
+|         2 | stockton, california, usa |    18 | stockton | california | usa       | 2021-09-12 061427.197000 |
+
+**User-Book ratings**
+
+Ratings assigned to books by users. user_id is the user identifier, isbn is the book identifier and rating is a rating ranging from 0-10 assigned by the user. This data source is both batch and streaming based in order to capture the latest rating events.
+
+|   user_id |       isbn |   rating | rating_timestamp           |
+|----------|-----------|---------|---------------------------|
+|         2 | 0195153448 |        0 | 2022-08-04 160316.862000 |
+
+
+### [Features](Recommender_system/features/)
+
+#### [Book aggregate ratings features (Batch)](Recommender_system/features/book_aggregate_ratings.py)
+
+Capture the popularity of a product using several statistical measures (mean, standard deviation, count). Easily compute batch window aggregate features using Tecton's aggregation framework.
+
+```python
+@batch_feature_view(
+    description='''Book aggregate rating features over the past year and past 30 days.''',
+    sources=[FilteredSource(ratings_batch)],
+    entities=[book],
+    mode='spark_sql',
+    aggregation_interval=timedelta(days=1),
+    aggregations=[
+        Aggregation(column='rating', function='mean', time_window=timedelta(days=365)),
+        Aggregation(column='rating', function='mean', time_window=timedelta(days=30)),
+        Aggregation(column='rating', function='stddev', time_window=timedelta(days=365)),
+        Aggregation(column='rating', function='stddev', time_window=timedelta(days=30)),
+        Aggregation(column='rating', function='count', time_window=timedelta(days=365)),
+        Aggregation(column='rating', function='count', time_window=timedelta(days=30)),
+    ],
+    feature_start_time=datetime(2022, 1, 1),  # Only plan on generating training data from the past year.
+
+)
+def book_aggregate_ratings(ratings):
+    return f'''
+        SELECT
+            isbn,
+            rating_timestamp,
+            rating
+        FROM
+            {ratings}
+        '''
+```
+
+#### [User recent ratings (Streaming)](Recommender_system/features/user_recent_ratings.py)
+
+Retrieve a user's most recent distinct book ratings within a 365 days window, computed from streaming data.
+
+```python
+@stream_feature_view(
+    description='''Ratings summaries of the user\'s most recent 200 book ratings.''',
+    source=FilteredSource(ratings_with_book_metadata_stream),
+    entities=[user],
+    mode='pyspark',
+    feature_start_time=datetime(2022, 1, 1),  # Only plan on generating training data from the past year.
+    aggregation_interval=timedelta(days=1),
+    aggregations=[
+        Aggregation(column='rating_summary', function=last_distinct(200), time_window=timedelta(days=365), name='last_200_ratings'),
+    ]
+)
+def user_recent_ratings(ratings_with_book_metadata):
+    from pyspark.sql.functions import struct, to_json, col
+
+    df = ratings_with_book_metadata.select(
+        col("user_id"),
+        col("rating_timestamp"),
+        to_json(struct('rating', 'book_author', 'category')).alias("rating_summary")
+    )
+
+    return df
+
+```
+
+#### [User ratings for similar books (On-demand + Batch)](Recommender_system/features/user_recent_ratings.py)
+
+Blend real-time data and pre-computed batch and streaming features in order to capture the current users' past interactions and ratings with books from the same author and category as the current candidate book.
+
+
+```python
+output_schema = [
+    Field('avg_rating_for_candidate_book_category', Float64),
+    Field('num_rating_for_candidate_book_category', Int64),
+    Field('avg_rating_for_candidate_book_author', Float64),
+    Field('num_rating_for_candidate_book_author', Int64),
+]
+
+@on_demand_feature_view(
+    sources=[book_metadata_features, user_recent_ratings],
+    mode='python',
+    schema=output_schema,
+    description="Aggregate rating metrics for the current user for the candidate book's category and author."
+)
+def user_ratings_similar_to_candidate_book(book_metadata_features, user_recent_ratings):
+    import json
+
+    user_ratings_json = user_recent_ratings["last_200_ratings"]
+    user_ratings = [json.loads(user_rating) for user_rating in user_ratings_json]
+
+    user_ratings_same_category = []
+    user_ratings_same_author = []
+    candidate_category = book_metadata_features["category"]
+    candidate_author = book_metadata_features["book_author"]
+    for rating in user_ratings:
+        if candidate_category and "category" in rating and rating["category"] == candidate_category:
+            user_ratings_same_category.append(rating["rating"])
+        if candidate_author and "book_author" in rating and rating["book_author"] == candidate_author:
+            user_ratings_same_author.append(rating["rating"])
+
+    output = {
+        "avg_rating_for_candidate_book_category": None,
+        "num_rating_for_candidate_book_category": len(user_ratings_same_category),
+        "avg_rating_for_candidate_book_author": None,
+        "num_rating_for_candidate_book_author": len(user_ratings_same_author),
+    }
+
+    if output["num_rating_for_candidate_book_category"] > 0:
+        output["avg_rating_for_candidate_book_category"] = (
+                sum(user_ratings_same_category) / output["num_rating_for_candidate_book_category"])
+
+    if output["num_rating_for_candidate_book_author"] > 0:
+        output["avg_rating_for_candidate_book_author"] = (
+                sum(user_ratings_same_author) / output["num_rating_for_candidate_book_author"])
+
+    return output
+```
