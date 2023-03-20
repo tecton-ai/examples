@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
         Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
     ],
     feature_start_time=datetime(2022,5, 1),
-    batch_schedule=timedelta(days=1)
+    batch_schedule=timedelta(days=1),
+    online=True
 
 )
 def user_merchant_transactions_count(transactions_stream):

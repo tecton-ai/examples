@@ -1,5 +1,5 @@
-from data_sources.ratings_with_book_metadata_stream import ratings_with_book_metadata_stream
-from entities import user
+from Recommender_system.data_sources import ratings_with_book_metadata_stream
+from Recommender_system.entities import user
 from datetime import datetime, timedelta
 from tecton import stream_feature_view, FilteredSource, Aggregation
 from tecton.aggregation_functions import last_distinct

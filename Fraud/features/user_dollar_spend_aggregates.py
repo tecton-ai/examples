@@ -15,7 +15,8 @@ from datetime import datetime, timedelta
         Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=30)),
         Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=60))
     ],
-    feature_start_time=datetime(2022, 5, 1)
+    feature_start_time=datetime(2022, 5, 1),
+    online=True
 )
 def user_dollar_spend(transactions):
     return f'''
