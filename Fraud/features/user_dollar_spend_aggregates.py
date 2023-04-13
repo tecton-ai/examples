@@ -13,10 +13,9 @@ from datetime import datetime, timedelta
     aggregations=[
         Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=10)),
         Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=30)),
-        Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=60))
-    ],
-    feature_start_time=datetime(2022, 5, 1),
-    online=True
+        Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=60)),
+        Aggregation(column='amt', function='mean', time_window=timedelta(days=60))
+    ]
 )
 def user_dollar_spend(transactions):
     return f'''

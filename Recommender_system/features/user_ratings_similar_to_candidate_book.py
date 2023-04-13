@@ -11,10 +11,10 @@ output_schema = [
 ]
 
 @on_demand_feature_view(
+    description='''Aggregate rating metrics for the current user for the candidate book's category and author.''',
     sources=[book_metadata_features, user_recent_ratings],
     mode='python',
-    schema=output_schema,
-    description="Aggregate rating metrics for the current user for the candidate book's category and author."
+    schema=output_schema
 )
 def user_ratings_similar_to_candidate_book(book_metadata_features, user_recent_ratings):
     import json

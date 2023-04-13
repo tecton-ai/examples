@@ -9,7 +9,6 @@ from tecton.aggregation_functions import last_distinct
     source=FilteredSource(ratings_with_book_metadata_stream),
     entities=[user],
     mode='pyspark',
-    feature_start_time=datetime(2022, 1, 1),  # Only plan on generating training data from the past year.
     aggregation_interval=timedelta(days=1),
     aggregations=[
         Aggregation(column='rating_summary', function=last_distinct(200), time_window=timedelta(days=365), name='last_200_ratings'),

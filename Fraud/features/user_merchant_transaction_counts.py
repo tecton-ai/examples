@@ -12,10 +12,7 @@ from datetime import datetime, timedelta
     aggregations=[
         Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
     ],
-    feature_start_time=datetime(2022,5, 1),
-    batch_schedule=timedelta(days=1),
-    online=True
-
+    batch_schedule=timedelta(days=1)
 )
 def user_merchant_transactions_count(transactions_stream):
   from pyspark.sql import functions as f

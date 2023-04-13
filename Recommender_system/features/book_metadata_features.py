@@ -9,10 +9,8 @@ from tecton import batch_feature_view
     sources=[books_batch],
     entities=[book],
     mode='spark_sql',
-    feature_start_time=datetime(2018, 1, 1) ,
     ttl=timedelta(days=30),
     batch_schedule=timedelta(days=1)
- 
 )
 def book_metadata_features(books):
     return f'''

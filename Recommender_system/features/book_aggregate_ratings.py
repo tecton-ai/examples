@@ -16,9 +16,7 @@ from tecton import batch_feature_view, FilteredSource, Aggregation
         Aggregation(column='rating', function='stddev', time_window=timedelta(days=30)),
         Aggregation(column='rating', function='count', time_window=timedelta(days=365)),
         Aggregation(column='rating', function='count', time_window=timedelta(days=30)),
-    ],
-    feature_start_time=datetime(2022, 1, 1),  # Only plan on generating training data from the past year.
-
+    ]
 )
 def book_aggregate_ratings(ratings):
     return f'''

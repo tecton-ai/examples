@@ -1,7 +1,6 @@
 from Fraud.features.user_last_transaction_location import user_last_transaction_location
 from tecton.types import String, Float64, Field
 from tecton import on_demand_feature_view, RequestSource
-import constants
 
 request_schema = [Field('user_id', String),
                 Field('merch_lat', Float64),
@@ -13,8 +12,7 @@ request_schema = [Field('user_id', String),
                 using Haversine formula''',
     sources=[RequestSource(schema=request_schema), user_last_transaction_location],
     mode='python',
-    schema=[Field('distance_previous_transaction', Float64)],
-    
+    schema=[Field('distance_previous_transaction', Float64)]
 )
 def distance_previous_transaction(transaction_request, user_last_transaction_location):
     from math import sin, cos, sqrt, atan2, radians
