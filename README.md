@@ -71,7 +71,6 @@ A common pattern for fraudsters is to put many small charges on a stolen credit 
         Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
     ],
     feature_start_time=datetime(2022,5, 1)
-
 )
 def user_merchant_transactions_count(transactions_stream):
   from pyspark.sql import functions as f
@@ -88,8 +87,7 @@ Leverage geolocation features to detect if a user's card is used in an unusual, 
                 using Haversine formula''',
     sources=[RequestSource(schema=request_schema), user_last_transaction_location],
     mode='python',
-    schema=[Field('distance_previous_transaction', Float64)],
-    
+    schema=[Field('distance_previous_transaction', Float64)]
 )
 def distance_previous_transaction(transaction_request, user_last_transaction_location):
     from math import sin, cos, sqrt, atan2, radians
@@ -114,6 +112,26 @@ def distance_previous_transaction(transaction_request, user_last_transaction_loc
         "distance_previous_transaction": distance
     }
 
+```
+
+#### [Z-score of current transaction amount (On-demand + Batch)](Fraud/features/user_transaction_zscore.py)
+
+Z-score is a statistical measure commonly used in Fraud detection because it is a simple yet very effective way to identify outliers in a timeseries. In the context of Fraud, z-score lets us identify by how many standard deviations the current transaction amount deviates from the mean transaction amount for a user. This feature is an example of combining real-time data (current amount) with batch pre-computed features (mean, stddev) and applying pandas-based logic.
+
+```python
+@on_demand_feature_view(
+    description='''Z-score of the current transaction amount for a user based on 60 days mean and standard deviation''',
+    sources=[transaction_request, user_dollar_spend],
+    mode='pandas',
+    schema=output_schema
+)
+def zscore_current_transaction(transaction_request, user_dollar_spend):
+    import pandas
+    
+    user_dollar_spend['amount'] = transaction_request['amt']
+    user_dollar_spend['zscore_transaction_amount'] = (user_dollar_spend['amount'] - user_dollar_spend['amt_mean_60d_1d']) / user_dollar_spend['amt_stddev_samp_60d_1d']
+
+    return user_dollar_spend[['zscore_transaction_amount']]
 ```
 
 ## [2. Recommender System](Recommender_system)
@@ -183,7 +201,6 @@ Capture the popularity of a product using several statistical measures (mean, st
         Aggregation(column='rating', function='count', time_window=timedelta(days=30)),
     ],
     feature_start_time=datetime(2022, 1, 1),  # Only plan on generating training data from the past year.
-
 )
 def book_aggregate_ratings(ratings):
     return f'''
