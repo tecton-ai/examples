@@ -1,7 +1,7 @@
 from tecton import on_demand_feature_view
 from tecton.types import String, Timestamp, Float64, Field, Int64
-from Recommender_system.features.book_metadata_features import book_metadata_features
-from Recommender_system.features.user_recent_ratings import user_recent_ratings
+from Spark.Recommender_system.features.book_metadata_features import book_metadata_features
+from Spark.Recommender_system.features.user_recent_ratings import user_recent_ratings
 
 output_schema = [
     Field('avg_rating_for_candidate_book_category', Float64),

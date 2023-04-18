@@ -1,4 +1,4 @@
-from Fraud.features.user_last_transaction_location import user_last_transaction_location
+from Spark.Fraud.features.user_last_transaction_location import user_last_transaction_location
 from tecton.types import String, Float64, Field
 from tecton import on_demand_feature_view, RequestSource
 

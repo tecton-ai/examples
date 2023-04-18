@@ -1,6 +1,6 @@
 from tecton.types import String, Timestamp, Float64, Field, Int64
 from tecton import on_demand_feature_view, RequestSource
-from Fraud.features.user_dollar_spend_aggregates import user_dollar_spend
+from Spark.Fraud.features.user_dollar_spend_aggregates import user_dollar_spend
 
 request_schema = [Field('user_id', String),Field('amt', Float64)]
 transaction_request = RequestSource(schema=request_schema)

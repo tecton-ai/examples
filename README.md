@@ -3,11 +3,11 @@
 This repository contains curated examples of Tecton-based feature definitions. Use these examples in your own projects by replacing the sample data sources with your own data.
 
 
-## [1. Fraud Detection](Fraud)
+## [1. Fraud Detection](Spark/Fraud)
 
-Build powerful batch, streaming, and real-time features to capture fraudulent patterns and detect fraud in real-time. https://www.tecton.ai/solutions/
+Build powerful batch, streaming, and real-time features to capture fraudulent patterns and detect fraud in real-time. 
 
-### [Data sources](Fraud/data_sources.py)
+### [Data sources](Spark/Fraud/data_sources.py)
 
 The data used as input for these features is transactional data. The features are built from historical transactions data (e.g files in s3, refreshed daily), transaction events streamed through Kinesis, as well as real-time data coming directly from the current transaction being processed.
 
@@ -24,9 +24,9 @@ Below is a preview of the data, these are the required attributes that you will 
 | user_884240387242 | 3eb88afb219c9a10f5130d0b89a13451 | gas_transport | 68.23 |          0 | fraud_Kutch, Hermiston and Farrell |       42.71 |     -78.3386 | 2023-06-20 102641 |
 
 
-### [Features](Fraud/features/)
+### [Features](Spark/features/)
 
-#### [Standard deviation of user spend (Batch)](Fraud/features/user_dollar_spend_aggregates.py)
+#### [Standard deviation of user spend (Batch)](Spark/Fraud/features/user_dollar_spend_aggregates.py)
 
 Measure how much a user's recent transactions deviate from their usual behavior to detect any suspicious activity on a credit card. This feature computes the standard deviation of a user's transaction amounts in the last 10, 30, and 60 days prior to the current transaction day. This feature is refreshed daily.
 
@@ -56,7 +56,7 @@ def user_dollar_spend(transactions):
         '''
 ```
 
-#### [User-Merchant transaction count (Streaming)](Fraud/features/user_merchant_transaction_counts.py)
+#### [User-Merchant transaction count (Streaming)](Spark/Fraud/features/user_merchant_transaction_counts.py)
 
 A common pattern for fraudsters is to put many small charges on a stolen credit card in a short amount of time. The only way to capture this pattern is to have near real-time feature freshness. This feature computes the number of transactions on a user's card at the same merchant in the last 30 minutes prior to the current transaction time. It is computed from streaming events data.
 
@@ -77,7 +77,7 @@ def user_merchant_transactions_count(transactions_stream):
   return transactions_stream.select('user_id','merchant','transaction_id','timestamp')
 ```
 
-#### [Distance between current and last transaction (On-demand + Streaming)](Fraud/features/user_distance_previous_location.py)
+#### [Distance between current and last transaction (On-demand + Streaming)](Spark/Fraud/features/user_distance_previous_location.py)
 
 Leverage geolocation features to detect if a user's card is used in an unusual, abnormally far location compared to the last transaction on the card. Combine and compare real-time and pre-computed features to capture new fraud patterns. This feature computes the distance between the current transaction location and the user's previous transaction location using Python.
 
@@ -114,7 +114,7 @@ def distance_previous_transaction(transaction_request, user_last_transaction_loc
 
 ```
 
-#### [Z-score of current transaction amount (On-demand + Batch)](Fraud/features/user_transaction_zscore.py)
+#### [Z-score of current transaction amount (On-demand + Batch)](Spark/Fraud/features/user_transaction_zscore.py)
 
 Z-score is a statistical measure commonly used in Fraud detection because it is a simple yet very effective way to identify outliers in a timeseries. In the context of Fraud, z-score lets us identify by how many standard deviations the current transaction amount deviates from the mean transaction amount for a user. This feature is an example of combining real-time data (current amount) with batch pre-computed features (mean, stddev) and applying pandas-based logic.
 
@@ -134,11 +134,11 @@ def zscore_current_transaction(transaction_request, user_dollar_spend):
     return user_dollar_spend[['zscore_transaction_amount']]
 ```
 
-## [2. Recommender System](Recommender_system)
+## [2. Recommender System](Spark/Recommender_system)
 
 Build a state of the art online book recommender system and improve customer engagement by combining historical product, user and user-product interaction data with session-based, near real-time interaction data coming from streaming events. 
 
-### [Data sources](Recommender_system/data_sources.py)
+### [Data sources](Spark/Recommender_system/data_sources.py)
 
 The data used for these examples is adapted from publicly available data (https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset). While this particular examples aims at recommending relevant books to users, it is applicable and can very easily be adapted to other use cases/product types.
 
@@ -179,9 +179,9 @@ Ratings assigned to books by users. user_id is the user identifier, isbn is the 
 |         2 | 0195153448 |        0 | 2022-08-04 160316.862000 |
 
 
-### [Features](Recommender_system/features/)
+### [Features](Spark/Recommender_system/features/)
 
-#### [Book aggregate ratings features (Batch)](Recommender_system/features/book_aggregate_ratings.py)
+#### [Book aggregate ratings features (Batch)](Spark/Recommender_system/features/book_aggregate_ratings.py)
 
 Capture the popularity of a product using several statistical measures (mean, standard deviation, count). Easily compute batch window aggregate features using Tecton's aggregation framework.
 
@@ -213,7 +213,7 @@ def book_aggregate_ratings(ratings):
         '''
 ```
 
-#### [User recent ratings (Streaming)](Recommender_system/features/user_recent_ratings.py)
+#### [User recent ratings (Streaming)](Spark/Recommender_system/features/user_recent_ratings.py)
 
 Retrieve a user's most recent distinct book ratings within a 365 days window, computed from streaming data.
 
@@ -242,7 +242,7 @@ def user_recent_ratings(ratings_with_book_metadata):
 
 ```
 
-#### [User ratings for similar books (On-demand + Batch + Streaming)](Recommender_system/features/user_ratings_similar_to_candidate_book.py)
+#### [User ratings for similar books (On-demand + Batch + Streaming)](Spark/Recommender_system/features/user_ratings_similar_to_candidate_book.py)
 
 Blend real-time data and pre-computed batch and streaming features in order to capture the current users' past interactions and ratings with books from the same author and category as the current candidate book. This feature leverages Python to combine batch and streaming features and apply additional logic.
 
@@ -293,4 +293,44 @@ def user_ratings_similar_to_candidate_book(book_metadata_features, user_recent_r
                 sum(user_ratings_same_author) / output["num_rating_for_candidate_book_author"])
 
     return output
+```
+
+## [3. Credit Risk Scoring](Snowflake/Credit_risk/)
+
+Make real-time decisions on new credit card or loan applications by predicting an applicant's probability of being past due on their credit/loan payment. 
+
+### [Data sources]
+
+In most real-time credit decisioning use cases, there is little to no prior information about the applicant. Most features will be generated from application form data or 3rd party APIs like Plaid, Socure or Experian. 
+
+For this example we will leverage information about the current application as well as the transaction history of the applicant's bank accounts, retrieved from the [Plaid API transactions endpoint](https://plaid.com/docs/api/). A sample API response payload is available in [Plaid's documentation](https://plaid.com/docs/api/products/transactions/#transactionsget)
+
+### [Features](Snowflake/Credit_risk/features/)
+
+#### [Applicant total spend accross accounts in 30,60,90 days from Plaid API (On-demand)]
+
+Compute features in real-time from a JSON API Payload passed at inference time using Pandas in Python. Tecton guarantees the same code will be executed offline when generating training data to limit training/serving skew. 
+
+```python
+@on_demand_feature_view(
+    description='''Total expenses accross a user's bank accounts, computed in real-time from the Plaid Transactions API payload''',
+    sources=[RequestSource(schema=[Field('TIMESTAMP', String), Field('PLAID_PAYLOAD', String)])],
+    mode='python',
+    schema=[Field('user_total_spend_last_%s_days'%i, Int64)  for i in range(30,150,30)]
+)
+def user_plaid_features(request):
+    from datetime import datetime, timedelta
+    import json
+    import pandas
+    
+    df = pandas.DataFrame(json.loads(request['PLAID_PAYLOAD']).get('transactions'))
+    df['date'] = pandas.to_datetime(df['date'])
+    output_dict = {}
+
+    for i in range(30,150,30):
+        df_sub = df[df['date']>= pandas.to_datetime(request['TIMESTAMP'])-timedelta(days=i)]
+        user_total_spend = int(df_sub['amount'].sum())
+        output_dict['user_total_spend_last_%s_days'%i] = user_total_spend
+    
+    return output_dict
 ```

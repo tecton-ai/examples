@@ -1,5 +1,5 @@
-from Fraud.entities import user
-from Fraud.data_sources import transactions_batch
+from Spark.Fraud.entities import user
+from Spark.Fraud.data_sources import transactions_batch
 from tecton import batch_feature_view, FilteredSource, Aggregation
 from datetime import datetime, timedelta
 
