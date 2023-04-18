@@ -299,7 +299,7 @@ def user_ratings_similar_to_candidate_book(book_metadata_features, user_recent_r
 
 Make real-time decisions on new credit card or loan applications by predicting an applicant's probability of being past due on their credit/loan payment. 
 
-### [Data sources]
+### [Data sources](https://plaid.com/docs/api/products/transactions/#transactionsget)
 
 In most real-time credit decisioning use cases, there is little to no prior information about the applicant. Most features will be generated from application form data or 3rd party APIs like Plaid, Socure or Experian. 
 
@@ -316,7 +316,7 @@ Compute features in real-time from a JSON API Payload passed at inference time u
     description='''Total expenses accross a user's bank accounts, computed in real-time from the Plaid Transactions API payload''',
     sources=[RequestSource(schema=[Field('TIMESTAMP', String), Field('PLAID_PAYLOAD', String)])],
     mode='python',
-    schema=[Field('user_total_spend_last_%s_days'%i, Int64)  for i in range(30,150,30)]
+    schema=[Field('user_total_spend_last_%s_days'%i, Int64)  for i in range(30,120,30)]
 )
 def user_plaid_features(request):
     from datetime import datetime, timedelta
@@ -327,10 +327,18 @@ def user_plaid_features(request):
     df['date'] = pandas.to_datetime(df['date'])
     output_dict = {}
 
-    for i in range(30,150,30):
+    for i in range(30,120,30):
         df_sub = df[df['date']>= pandas.to_datetime(request['TIMESTAMP'])-timedelta(days=i)]
         user_total_spend = int(df_sub['amount'].sum())
         output_dict['user_total_spend_last_%s_days'%i] = user_total_spend
     
     return output_dict
 ```
+
+## [4. Personalization](Snowflake/Personalization/)
+
+Personalize in-product user experience using your users' historical and in-session behavior to increase engagement and conversions! For a given context, user and set of offers/content to display, our model will rank the offers/content based on the probability of a user interacting with the offer. In this example, we are a mobile gaming company that is trying to personalize in-app offers in real-time based on a user's behavior. 
+
+### [Data sources](Snowflake/Personalization/data_sources.py)
+
+The input datasets 
