@@ -307,7 +307,7 @@ For this example we will leverage information about the current application as w
 
 ### [Features](Snowflake/Credit_risk/features/)
 
-#### [Applicant total spend accross accounts in 30,60,90 days from Plaid API (On-demand)]
+#### [Applicant total spend accross accounts in 30,60,90 days from Plaid API (On-demand)](Snowflake/Credit_risk/features/plaid_features.py)
 
 Compute features in real-time from a JSON API Payload passed at inference time using Pandas in Python. Tecton guarantees the same code will be executed offline when generating training data to limit training/serving skew. 
 
