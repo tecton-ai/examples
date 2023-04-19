@@ -367,7 +367,7 @@ The structure of the event payload is the following:
 
 ### [Features](Snowflake/Personalization/features)
 
-#### [User purchases by category for all categories (Batch)](Snowflake/Personalization/features/user_categorical_aggregations.py)
+#### [Categorical aggregates of user purchases (Batch)](Snowflake/Personalization/features/user_categorical_aggregations.py)
 
 Aggregate a user's historical interactions with all product categories within a single Feature View to power your ranking model. This Feature View leverages custom aggregations and incremental backfills to return a single dict-like object with the aggregation metric per category within a 30 day window. It is computed in batch and refreshed everyday.
 
