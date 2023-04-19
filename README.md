@@ -341,4 +341,80 @@ Personalize in-product user experience using your users' historical and in-sessi
 
 ### [Data sources](Snowflake/Personalization/data_sources.py)
 
-The input datasets 
+The input datasets were synthesized from an openly available Kaggle dataset containing in-app purchase product information for a battle royale mobile game.
+
+**Data Preview**
+
+**User purchases**
+
+Snowflake table containing in-app purchase history for all users. Below is a preview of the data, these are the required attributes that you will need to map your input data to in order to reuse these features:
+
+| USER_ID      | PRODUCT_NAME   | PRODUCT_CATEGORY    |   QUANTITY | TIMESTAMP           |
+|-------------|---------------|--------------------|-----------|--------------------|
+| user_1009748 | Bandit         | Troops and Defenses |          3 | 2023-03-27 081758 |
+
+**In-game events stream**
+
+Our application emits streaming events based on users interacting with the application (logging-in, game played, purchase etc.). For this example, we are specifically interested in the game played events which we are pushing to Tecton using Tecton's [Stream Ingest API](https://docs.tecton.ai/using-the-ingestion-api).
+
+The structure of the event payload is the following:
+{
+    'USER_ID': 'user_1009748',
+    'EVENT_TS': '2023-03-27T08:17:58+00:00',
+    'TIME_GAME_PLAYED': '2023-03-27 08:17:57',
+    'GAME_ID': 'multiplayer_988398',
+}
+
+### [Features](Snowflake/Personalization/features)
+
+#### [User purchases by category for all categories (Batch)](Snowflake/Personalization/features/user_categorical_aggregations.py)
+
+Aggregate a user's historical interactions with all product categories within a single Feature View to power your ranking model. This Feature View leverages custom aggregations and incremental backfills to return a single dict-like object with the aggregation metric per category within a 30 day window. It is computed in batch and refreshed everyday.
+
+```python
+@batch_feature_view(
+    description='''Agrregate metrics for each product category in a user's 30 day purchase history. 
+    This feature outputs a Snowflake object with the following structure: 
+    {'category_1':'user total purchases in category_1', 'category_2': ...}'''
+    entities=[gaming_user],
+    sources=[gaming_transactions],
+    mode='snowflake_sql',
+    incremental_backfills=True,
+    ttl=timedelta(days=30),
+    batch_schedule=timedelta(days=1)
+    )
+def user_categorical_aggregations(gaming_transactions, context=materialization_context()):
+    return f'''
+    SELECT
+        USER_ID,
+        TO_TIMESTAMP('{context.end_time}') - INTERVAL '1 MICROSECOND' AS TIMESTAMP,
+        TO_CHAR(OBJECT_AGG(PRODUCT_CATEGORY, SUM(QUANTITY)::variant) OVER (PARTITION BY USER_ID)) AS USER_PURCHASES
+    FROM {gaming_transactions}
+        WHERE EVENT_TS <TO_TIMESTAMP('{context.end_time}') AND EVENT_TS >= TO_TIMESTAMP('{context.start_time}') - INTERVAL '30 DAYS'
+    GROUP_BY USER_ID, PRODUCT_CATEGORY
+    '''
+```
+
+#### [Time since last game played (On-demand + Stream Ingest API)](Snowflake/Personalization/features/user_time_since_last_game.py)
+
+Measure the recency of your users' engagements with date difference features in On-demand feature views with Tecton. In this example, we are computing the difference between the current timestamp and a timestamp retrieved from a Streaming Feature view to account for the time elapsed since the user last played a game! 
+
+```python
+@on_demand_feature_view(
+    description='''Number of minutes elapsed between current time (coming from the request payload) 
+    and the time of the user's last game (fetched from a Streaming Feature View).'''
+    sources=[request, user_last_game_played],
+    mode='python',
+    schema=[Field('user_time_since_last_game', Int64)]
+)
+def user_time_since_install(request, user_last_game_played):
+    from datetime import datetime, date
+    import pandas
+    
+    request_datetime = pandas.to_datetime(request['TIMESTAMP']).replace(tzinfo=None)
+    last_game_datetime = pandas.to_datetime(user_last_game_played['TIME_GAME_PLAYED'])
+    td = request_datetime - dob_datetime 
+    
+    return {'user_time_since_last_game': td.minute}
+
+```
