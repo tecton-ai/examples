@@ -3,7 +3,7 @@ from Snowflake.Personalization.data_sources import gaming_transactions
 from tecton import batch_feature_view, materialization_context
 
 @batch_feature_view(
-    description='''Agrregate metrics for each product category in a user's 30 day purchase history. 
+    description='''Aggregate metrics for each product category in a user's 30 day purchase history. 
     This feature outputs a Snowflake object with the following structure: 
     {'category_1':'user total purchases in category_1', 'category_2': ...}'''
     entities=[gaming_user],
