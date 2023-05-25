@@ -19,6 +19,9 @@
 
 # DBTITLE 1,Generate second-by-second trade data
 from pyspark.sql.types import LongType, IntegerType, StringType
+from datetime import datetime
+from datetime import date
+from datetime import timedelta
 
 import dbldatagen as dg
 
@@ -37,6 +40,9 @@ ticker_weights = [
     2,3,1,1,1
 ]
 
+yesterdays_date = datetime.today() - timedelta(days=1)
+yesterdays_date_string = yesterdays_date.strftime("%Y-%m-%d")
+
 testDataSpec = (
     dg.DataGenerator(spark, name="device_data_set", rows=data_rows, 
                      partitions=partitions_requested)
@@ -51,8 +57,8 @@ testDataSpec = (
                 baseColumn="trade_id")
     .withColumn("QUANTITY", "integer", minValue=1, maxValue=100, step=1, random=True)
     .withColumn("PRICE", "integer", minValue=100, maxValue=110, step=1, random=True)
-    .withColumn("TIMESTAMP", "timestamp", begin="2019-01-02 09:30:00", 
-                end="2019-01-02 16:00:00", 
+    .withColumn("TIMESTAMP", "timestamp", begin=one_year_prior_date_string + " 09:30:00", 
+                end=yesterdays_date_string + " 16:00:00", 
                 interval="1 second", random=True )
 )
 
@@ -86,6 +92,11 @@ partitions_requested = 1
 
 spark.conf.set("spark.sql.shuffle.partitions", shuffle_partitions_requested)
 
+yesterdays_date = datetime.today() - timedelta(days=1)
+one_year_prior_date = datetime.today() - timedelta(days=365)
+yesterdays_date_string = yesterdays_date.strftime("%Y-%m-%d")
+one_year_prior_date_string = one_year_prior_date.strftime("%Y-%m-%d")
+
 symbols = ["ABC", "DEF", "GHI", "JKLM", "NOP"]
 array_of_dfs = [] 
 for symbol in symbols: 
@@ -98,8 +109,8 @@ for symbol in symbols:
                       partitions=partitions_requested)
       .withIdOutput()
       .withColumn("SYMBOL", "string", values=stock_tickers)
-      .withColumn("VOLUME", "integer", minValue=100000, maxValue=1000000, step=10000, random=True)
-      .withColumn("CLOSE", "integer", minValue=100, maxValue=110, step=1, random=True)
+      .withColumn("VOLUME", "integer", minValue=100000, maxValue=1000000, step=10000, random=True, randomSeed=-1)
+      .withColumn("CLOSE", "integer", minValue=100, maxValue=110, step=1, random=True, randomSeed=-1)
       .withColumn(
           "LOW",
           "integer",
@@ -112,8 +123,8 @@ for symbol in symbols:
           expr="CLOSE + floor(rand() * 10)",
           baseColumn="CLOSE",
       )
-      .withColumn("TIMESTAMP", "timestamp", begin="2019-01-01 16:00:00", 
-                end="2019-12-31 16:00:00", 
+      .withColumn("TIMESTAMP", "timestamp", begin= one_year_prior_date_string + " 16:00:00", 
+                end=yesterdays_date_string + " 16:00:00", 
                 interval="1 day", random=False)
   )
   array_of_dfs.append(testDataSpec.build())
@@ -126,7 +137,7 @@ master_df = reduce(DataFrame.unionAll, array_of_dfs)
 # COMMAND ----------
 
 # DBTITLE 1,Preview daily stock data
-display(master_df)
+display(master_df.orderBy("TIMESTAMP", "SYMBOL"))
 
 # COMMAND ----------
 
