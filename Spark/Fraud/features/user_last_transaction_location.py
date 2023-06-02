@@ -1,5 +1,5 @@
-from Spark.Fraud.entities import user
-from Spark.Fraud.data_sources import transactions_stream
+from Fraud.entities import user
+from Fraud.data_sources import transactions_stream
 from tecton import stream_feature_view
 from datetime import datetime, timedelta
 

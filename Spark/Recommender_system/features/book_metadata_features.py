@@ -1,5 +1,5 @@
-from Spark.Recommender_system.data_sources import books_batch
-from Spark.Recommender_system.entities import book
+from Recommender_system.data_sources import books_batch
+from Recommender_system.entities import book
 from datetime import datetime, timedelta
 from tecton import batch_feature_view
 

@@ -1,5 +1,5 @@
-from Spark.Fraud.data_sources import transactions_stream
-from Spark.Fraud.entities import user, merchant
+from Fraud.data_sources import transactions_stream
+from Fraud.entities import user, merchant
 from tecton import stream_feature_view, Aggregation 
 from datetime import datetime, timedelta
 
@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
     source=transactions_stream,
     entities=[user, merchant],
     mode='pyspark',
+    online=True,
+    offline=True,
+    feature_start_time=datetime(2021,1,1),
     aggregation_interval=timedelta(minutes=5),
     aggregations=[
         Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
