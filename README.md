@@ -418,3 +418,142 @@ def user_time_since_install(request, user_last_game_played):
     return {'user_time_since_last_game': td.minute}
 
 ```
+
+## [5. Dynamic Pricing](Spark/Dynamic_pricing/)
+
+In this example, we are a ride-hailing company that is trying to dynamically price rides based on factors such as the duration of a ride, the number of available drivers, and the number of riders currently using the app.
+
+### [Data sources](Spark/Dynamic_pricing/data_sources/)
+
+There were several data sources based loosely on a public Kaggle [dataset](https://www.kaggle.com/datasets/ravi72munde/uber-lyft-cab-prices) containing historical data on Uber and Lyft rides.
+
+**Data Preview**
+
+**Completed Rides**
+
+Hive table containing completed rides for all users. Below is a preview of the data:
+
+| origin_zipcode | duration | TIMESTAMP           |
+|----------------|----------|---------------------|
+| 94102          | 1273     | 2023-03-27 081758   |
+
+**Driver locations stream**
+
+The driver application emits streaming events that indicate where drivers are located.
+
+The structure of the event payload is the following:
+{
+    'driver_id': 'driver_826192',
+    'timestamp': '2023-03-27T08:17:58+00:00',
+    'zipcode': '94102',
+}
+
+**Ride requests stream**
+
+The rider app emits streaming events that indicate when a new ride is requested.
+
+The structure of the event payload is the following:
+{
+    'user_id': 'user_718092',
+    'origin_zipcode': '94102',
+    'destination_zipcode': '94103',
+    'request_id': 'request_917109292',
+    'timestamp': '2023-03-27T08:17:58+00:00',
+}
+
+### [Features](Spark/Dynamic_pricing/features)
+
+#### [Ride Requests (Streaming)](Spark/Dynamic_pricing/features/ride_request_count.py)
+
+Counts the number of ride requests over the past 30 minutes, grouped by the origin zipcode. It is updated every 5 minutes.
+
+Aggregate a user's historical interactions with all product categories within a single Feature View to power your ranking model. This Feature View leverages custom aggregations and incremental backfills to return a single dict-like object with the aggregation metric per category within a 30 day window. It is computed in batch and refreshed everyday.
+
+```python
+@stream_feature_view(
+    description='''Number of ride requests from the given origin zipcode over the last 30 minutes, updated every 5 minutes.''',
+    source=ride_requests_stream,
+    entities=[origin_zipcode],
+    mode='pyspark',
+    aggregation_interval=timedelta(minutes=5),
+    aggregations=[
+        Aggregation(column='request_id', function='count', time_window=timedelta(minutes=30))
+    ],
+    batch_schedule=timedelta(days=1),
+)
+def ride_request_count(ride_requests_stream):
+    from pyspark.sql import functions as f
+    return ride_requests_stream.select('origin_zipcode', 'timestamp', 'request_id')
+```
+
+#### [Driver Availability (Streaming)](Spark/Dynamic_pricing/features/available_drivers_count.py)
+
+Counts the number of drivers available over the past 30 minutes, grouped by zipcode. It is updated every 5 minutes.
+
+```python
+@stream_feature_view(
+    description='''Number of available drivers in the given zipcode over the last 30 minutes, updated every 5 minutes.''',
+    source=driver_locations_stream,
+    entities=[zipcode],
+    mode='spark_sql',
+    aggregation_interval=timedelta(minutes=5),
+    aggregations=[
+        Aggregation(column='driver_id', function=approx_count_distinct(), time_window=timedelta(minutes=30))
+    ],
+    batch_schedule=timedelta(days=1),
+)
+def available_drivers_count(driver_locations_stream):
+    return f"""
+        SELECT zipcode, timestamp, driver_id
+        FROM {driver_locations_stream}
+        """
+```
+
+#### [Ride Duration Statistics (Batch)](Spark/Dynamic_pricing/features/ride_durations.py)
+
+Computes the mean and standard deviation of ride durations from the given zipcode. It is updated every day.
+
+```python
+@batch_feature_view(
+    description='''Standard deviation of ride durations from the given zipcode over a series of time windows, updated daily.''',
+    sources=[FilteredSource(completed_rides_batch)],
+    entities=[origin_zipcode],
+    mode='spark_sql',
+    aggregation_interval=timedelta(days=1), # This feature will be updated daily
+    aggregations=[
+        Aggregation(column='duration', function='stddev_samp', time_window=timedelta(days=10)),
+        Aggregation(column='duration', function='stddev_samp', time_window=timedelta(days=30)),
+        Aggregation(column='duration', function='stddev_samp', time_window=timedelta(days=60)),
+        Aggregation(column='duration', function='mean', time_window=timedelta(days=60))
+    ]
+)
+def ride_durations(completed_rides_batch):
+    return f'''
+        SELECT
+            origin_zipcode,
+            duration,
+            timestamp
+        FROM
+            {completed_rides_batch}
+        '''
+```
+
+#### [Ride Duration Z-Score (Batch)](Spark/Dynamic_pricing/features/ride_duration_zscore.py)
+
+Computes the z-score of the requested ride duration based on the mean and standard deviation over the past 60 days.
+
+```python
+@on_demand_feature_view(
+    description='''Z-score of the requested ride duration based on 60 days mean and standard deviation''',
+    sources=[ride_request, ride_durations],
+    mode='pandas',
+    schema=output_schema
+)
+def ride_duration_zscore(transaction_request, ride_durations):
+    import pandas
+    
+    ride_durations['duration'] = transaction_request['duration']
+    ride_durations['zscore_duration'] = (ride_durations['duration'] - ride_durations['duration_mean_60d_1d']) / ride_durations['duration_stddev_samp_60d_1d']
+
+    return ride_durations[['zscore_duration']]
+```
