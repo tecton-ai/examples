@@ -1,5 +1,5 @@
-from Spark.Fraud.entities import user
-from Spark.Fraud.data_sources import transactions_batch
+from Fraud.entities import user
+from Fraud.data_sources import transactions_batch
 from tecton import batch_feature_view, FilteredSource, Aggregation
 from datetime import datetime, timedelta
 
@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
     sources=[FilteredSource(transactions_batch)],
     entities=[user],
     mode='spark_sql',
+    online=True,
+    offline=True,
+    feature_start_time=datetime(2021,1,1),
     aggregation_interval=timedelta(days=1), # This feature will be updated daily
     aggregations=[
         Aggregation(column='amt', function='stddev_samp', time_window=timedelta(days=10)),
