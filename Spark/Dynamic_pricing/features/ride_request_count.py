@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
     aggregations=[
         Aggregation(column='request_id', function='count', time_window=timedelta(minutes=30))
     ],
-    batch_schedule=timedelta(days=1),
+    batch_schedule=timedelta(days=1)
 )
 def ride_request_count(ride_requests_stream):
     from pyspark.sql import functions as f

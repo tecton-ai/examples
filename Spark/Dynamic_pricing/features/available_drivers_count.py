@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
     aggregations=[
         Aggregation(column='driver_id', function=approx_count_distinct(), time_window=timedelta(minutes=30))
     ],
-    batch_schedule=timedelta(days=1),
+    batch_schedule=timedelta(days=1)
 )
 def available_drivers_count(driver_locations_stream):
     return f"""
