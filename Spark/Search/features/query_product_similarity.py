@@ -15,7 +15,7 @@ output_schema = [
 
 
 @on_demand_feature_view(
-  description='''''',  
+  description='''Jaccard similarity between the tokenized input query and the product title, computed in real-time''',  
   sources=[search_query, product_title],
   schema=output_schema,
   mode='python'

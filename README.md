@@ -557,3 +557,164 @@ def ride_duration_zscore(transaction_request, ride_durations):
 
     return ride_durations[['zscore_duration']]
 ```
+
+## [6. Search and Ranking](Spark/Search/)
+
+In this example, we are focusing on improving shopper's experience on an e-commerce website by delivering highly relevant search results based on a user's input query, candidate product attributes and the user's past behavior and interactions with products. This example specifically focuses on the ranking part of the search engine, it assumes the candidate generation process has already happened and aims at ranking the candidates based on the user's likeliness to purchase. 
+
+### [Data sources](Spark/Search/data_sources.py)
+
+There were several data sources inspired from a public Kaggle [dataset](https://www.kaggle.com/c/home-depot-product-search-relevance) containing search relevance data for The Home Depot. Some of the datasets were synthesized. 
+
+**Data Preview**
+
+**Product title**
+
+Hive table containing a mapping of the product_uid and product title:
+
+| origin_zipcode | product_title                     |
+|----------------|-----------------------------------|
+| 100001         | Simpson Strong-Tie 12-Gauge Angle | 
+
+**Product attributes**
+
+Hive table containing a variety of product attributes (e.g Brand, Color, Material etc) for candidate products
+
+
+| product_uid    | name     | value               |
+|----------------|----------|---------------------|
+| 100001	     | Color    | White               |
+
+
+**Search interaction stream**
+
+The website emits streaming events when a user visits, adds to cart or purchases a product.
+
+The structure of the event payload is the following:
+{
+    'user_id': 'user_12378',
+    'timestamp': '2023-03-27T08:17:58+00:00',
+    'product_uid': '100001',
+    'event': 'add_to_cart'
+}
+
+This streaming data source as a batch equivalent that contains a historical log of these events in a Hive table.
+
+
+
+### [Features](Spark/Search/features)
+
+#### [Search query and candidate product title similarity (On-demand + Batch)](Spark/Search/features/query_product_similarity.py)
+
+Compute the [Jaccard similarity](https://en.wikipedia.org/wiki/Jaccard_index) between the user's input query and the candidate product's title/description in real-time. 
+
+```python
+@on_demand_feature_view(
+  description='''Jaccard similarity between the tokenized input query and the product title, computed in real-time''',  
+  sources=[search_query, product_title],
+  schema=output_schema,
+  mode='python'
+)
+def search_query_product_similarity(search_query, product_attributes, product_title):
+  def jaccard(list1, list2):
+    intersection = len(list(set(list1).intersection(list2)))
+    union = (len(list1) + len(list2)) - intersection
+    return float(intersection) / union
+    
+  #Normalizing and tokenizing search query
+  search_term = search_query.get('search_term')
+  search_term = search_term.lower()
+  tokenized_query = search_term.split(' ')
+
+  #Normalizing and tokenizing product title
+  product_title = product_title.get('product_title')
+  product_title = product_title.lower()
+  product_title_tokenized = product_title.split(' ')
+  
+  #Compute Jaccard similarity
+  jaccard_similarity = jaccard(tokenized_query, product_title_tokenized)
+  
+  return {
+    'jaccard_similarity_query_token_title_token': jaccard_similarity
+    }
+```
+
+#### [Product popularity metrics (Batch)](Spark/Search/features/product_popularity.py)
+
+Capture how popular a candidate product is by computing performance metrics over a rolling window using Tecton's Aggregation Framework. This feature is computed in batch and refreshed daily.
+
+```python
+@batch_feature_view(
+    description='''Product performance metrics to capture how popular a candidate product is 
+    based on last year visit, add to cart, purchase totals''',
+    sources=[search_user_interactions],
+    entities=[product],
+    mode='spark_sql',
+    aggregation_interval=timedelta(days=1)
+    aggregations=[Aggregation(column='purchase', function='sum', time_window=timedelta(days=365)),
+                Aggregation(column='visit', function='sum', time_window=timedelta(days=365)),
+                Aggregation(column='add_to_cart', function='sum', time_window=timedelta(days=365))],
+    batch_schedule=timedelta(days=1)
+)
+def product_yearly_totals(search_user_interactions):
+  return f"""
+    select 
+        product_uid,
+        timestamp,
+        case when event='add_to_cart' then 1 else 0 end as add_to_cart,
+        case when event='visit' then 1 else 0 end as visit,
+        case when event='purchase' then 1 else 0 end as purchase
+    from {search_user_interactions}
+  """
+```
+
+#### [Candidate product was viewed by user (On-demand + Streaming)](Spark/Search/features/user_viewed_product.py)
+
+Determine whether the user making a search has seen the candidate product in the last hour. This feature is computed from a Streaming feature view that capture the user's last 10 distinct products viewed in the last hour and from an On-demand feature view that determines whether the candidate product is part of the last 10 products viewed.
+
+```python
+@stream_feature_view(
+    description='''Last 10 products a user has viewed in the last hour, refreshed continuously from streaming events 
+    to capture in-session user behavior''',
+    source=search_interaction_stream,
+    entities=[search_user],
+    mode='spark_sql',
+    stream_processing_mode=StreamProcessingMode.CONTINUOUS,
+    aggregations=[
+        Aggregation(column='product_uid', function=last_distinct(10), time_window=timedelta(hours=1))
+    ],
+    batch_schedule=timedelta(days=1)
+)
+def user_products_viewed(search_interaction_stream):
+  return f"""
+  select 
+    user_id,
+    timestamp,
+    product_uid
+  from {search_interaction_stream}
+  where event='visit'
+  """
+
+
+request_schema = [
+                  Field('user_id', String),
+                  Field('product_uid', String)
+                  ]
+search_query = RequestSource(schema=request_schema)
+
+output_schema = [
+  Field('user_viewed_product_in_last_10_pages', Bool)
+]
+
+@on_demand_feature_view(
+  description='''This features verifies whether the current candidate product has been visited
+   by the user in the last hour, it is computed in real-time and depends on a streaming feature view''',
+  sources=[search_query, user_products_viewed],
+  schema=output_schema,
+  mode='python'
+)
+def user_viewed_product(search_query, user_products_viewed):
+    product_id = search_query['product_uid']
+    last_products_viewed = user_products_viewed['product_uid_last_distinct_10_1h_continuous']
+    return {'user_viewed_product_in_last_10_pages': product_id in last_products_viewed}
+```
