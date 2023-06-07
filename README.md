@@ -591,6 +591,7 @@ Hive table containing a variety of product attributes (e.g Brand, Color, Materia
 The website emits streaming events when a user visits, adds to cart or purchases a product.
 
 The structure of the event payload is the following:
+
 {
     'user_id': 'user_12378',
     'timestamp': '2023-03-27T08:17:58+00:00',
@@ -598,7 +599,7 @@ The structure of the event payload is the following:
     'event': 'add_to_cart'
 }
 
-This streaming data source as a batch equivalent that contains a historical log of these events in a Hive table.
+This streaming data source has a batch equivalent that contains a historical log of these events in a Hive table.
 
 
 
