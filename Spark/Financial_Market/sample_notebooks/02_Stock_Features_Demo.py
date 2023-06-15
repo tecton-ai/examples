@@ -8,17 +8,17 @@
 import tecton
 from datetime import datetime, timedelta
 
-#Replace variables your own Tecton API Service Account Key and Tecton URL
-token = dbutils.secrets.get(scope="nicklee", key="TECTON_API_KEY") 
-tecton_url = dbutils.secrets.get(scope="nicklee", key="API_SERVICE")
+token = dbutils.secrets.get(scope="nicklee", key="STAGING_TECTON_API_KEY") 
+tecton_url = dbutils.secrets.get(scope="nicklee", key="STAGING_API_SERVICE")
+workspace_name = "nicklee-staging-live"
 
-tecton.set_credentials(token)
-tecton.conf.set("TECTON_CLUSTER_NAME", "tecton-production")
+tecton.set_credentials(token, tecton_url=tecton_url)
+tecton.conf.set("TECTON_CLUSTER_NAME", "tecton-staging")
 tecton.test_credentials()
 
 #Get your target workspace in Tecton
 #Most of this notebook will work with a development workspace, but you must deploy to a live workspace to enable online serving. 
-ws = tecton.get_workspace("stock_demo_workspace_live") 
+ws = tecton.get_workspace(workspace_name) 
 
 # COMMAND ----------
 
@@ -71,7 +71,7 @@ display(daily_returns_result)
 # COMMAND ----------
 
 # DBTITLE 1,Feature Service data w/ on-demand features and batch features
-ws = tecton.get_workspace("stock_demo_workspace_live") 
+ws = tecton.get_workspace(workspace_name) 
 stock_daily_stats_feature_service = ws.get_feature_service("stock_daily_stats_feature_service")
 
 training_data = stock_daily_stats_feature_service.get_historical_features(
@@ -82,7 +82,7 @@ display(training_data.orderBy("TIMESTAMP_ADJUSTED", "SYMBOL"))
 
 # COMMAND ----------
 
-# DBTITLE 1,After deploying to a live workspace, you can test the real-time feature service
+# DBTITLE 1,After deploying to a live workspace, you can get features from the Online Store by calling the Feature Service
 import requests, json
 
 data = {
@@ -91,13 +91,14 @@ data = {
     "join_key_map": {
       "SYMBOL": "DEF"
     },
-    "workspace_name": "stock_demo_workspace_live", 
+    "workspace_name": workspace_name, 
+    
     "metadataOptions": {"includeNames": True}, 
   }
 }
 
 # This will only work for a live workspace
-r = requests.post('https://app.tecton.ai/api/v1/feature-service/get-features', data=json.dumps(data), headers={'Authorization': 'Tecton-key ' + token})
+r = requests.post(tecton_url + '/v1/feature-service/get-features', data=json.dumps(data), headers={'Authorization': 'Tecton-key ' + token})
 
 response_body = r.json()
 for (a, b) in zip(response_body['result']['features'], response_body['metadata']['features']): 
@@ -106,7 +107,86 @@ for (a, b) in zip(response_body['result']['features'], response_body['metadata']
 
 # COMMAND ----------
 
+# DBTITLE 1,Example Feature Service w/ Real-Time Features Derived from Streaming Trades 
+#Remember to turn on your stream before running this code
 
+import requests, json
+data = {
+  "params": {
+    "feature_service_name": "live_trading_stats",
+    "join_key_map": {
+      "SYMBOL": "ABC"
+    },
+    "workspace_name": workspace_name, 
+    "metadataOptions": {"includeNames": True}
+  }
+}
+
+# This will only work for a live workspace
+r = requests.post(tecton_url + '/v1/feature-service/get-features', data=json.dumps(data), headers={'Authorization': 'Tecton-key ' + token})
+
+response_body = r.json()
+
+#If you see "None" values, it might be because that data is still being calculated from batch sources. 
+for (a, b) in zip(response_body['result']['features'], response_body['metadata']['features']): 
+  print(b['name'] + ": " + str(a))
+
+
+# COMMAND ----------
+
+# MAGIC %pip install dbldatagen 
+
+# COMMAND ----------
+
+# DBTITLE 1,Generate Randomly Timed Query Spine to the Feature Service (like a model or trader querying throughout the day)
+#Build a spine of random symbols and random timestamps 
+
+from pyspark.sql.types import LongType, IntegerType, StringType
+import dbldatagen as dg
+from datetime import datetime, timedelta
+
+stock_tickers = [
+    "ABC", "DEF", "GHI", "JKLM", "NOP"
+]
+
+shuffle_partitions_requested = len(stock_tickers)
+data_rows = 20 * 1000
+partitions_requested = len(stock_tickers)
+
+spark.conf.set("spark.sql.shuffle.partitions", shuffle_partitions_requested)
+
+ticker_weights = [
+    1,1,1,1,1
+]
+
+start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d") + " 00:00:00"
+end_date = datetime.now() - timedelta(days=1)
+
+testDataSpec = (
+    dg.DataGenerator(spark, name="device_data_set", rows=data_rows, 
+                     partitions=partitions_requested)
+    .withColumn("SYMBOL", "string", values=stock_tickers, weights=ticker_weights)
+    .withColumn("TIMESTAMP", "timestamp", begin=start_date, 
+                end=end_date, 
+                interval="1 second", random=True )
+)
+
+dfTestData2 = testDataSpec.build()
+
+display(dfTestData2)
+
+# COMMAND ----------
+
+# DBTITLE 1,Create Point-in-Time Correct Training Data from Trade Feature Service (Batch, On-Demand, and Streaming Features all in one)
+import tecton
+ws = tecton.get_workspace(workspace_name) 
+live_trading_feature_service = ws.get_feature_service("live_trading_stats")
+
+training_data = live_trading_feature_service.get_historical_features(
+    spine=dfTestData2, timestamp_key="TIMESTAMP", from_source=False
+)
+
+display(training_data.to_spark())
 
 # COMMAND ----------
 

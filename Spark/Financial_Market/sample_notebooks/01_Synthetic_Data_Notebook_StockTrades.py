@@ -1,15 +1,19 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC
-# MAGIC ###Batch Data Creation Notebook
+# MAGIC ###Data Creation Notebook
 # MAGIC
 # MAGIC This notebook will create two synthetic stock tables: 
 # MAGIC 1) stock_demo_data.stock_trades: Second-by-second transaction data with price, volume, and timestamp of trade. 
 # MAGIC 2) stock_demo_data.stock_daily_stats: Day-by-day stock data including volume, closing price, low price, and high price. 
 # MAGIC
+# MAGIC Optional: This notebook also includes an example of streaming data into the Ingest API and materializing that in a Streaming Feature View. 
+# MAGIC
 # MAGIC ####How to use: 
 # MAGIC
 # MAGIC The notebook attempts to store this data in a schema "stock_demo_data" within Databricks. The Tecton data source is set up with the demo code: Link and Link
+# MAGIC
+# MAGIC
 
 # COMMAND ----------
 
@@ -41,7 +45,9 @@ ticker_weights = [
 ]
 
 yesterdays_date = datetime.today() - timedelta(days=1)
+one_year_prior_date = datetime.today() - timedelta(days=365)
 yesterdays_date_string = yesterdays_date.strftime("%Y-%m-%d")
+one_year_prior_date_string = one_year_prior_date.strftime("%Y-%m-%d")
 
 testDataSpec = (
     dg.DataGenerator(spark, name="device_data_set", rows=data_rows, 
@@ -55,8 +61,8 @@ testDataSpec = (
     )
     .withColumn("SYMBOL", "string", values=stock_tickers, weights=ticker_weights, 
                 baseColumn="trade_id")
-    .withColumn("QUANTITY", "integer", minValue=1, maxValue=100, step=1, random=True)
-    .withColumn("PRICE", "integer", minValue=100, maxValue=110, step=1, random=True)
+    .withColumn("QUANTITY", "long", minValue=1, maxValue=100, step=1, random=True)
+    .withColumn("PRICE", "long", minValue=100, maxValue=110, step=1, random=True)
     .withColumn("TIMESTAMP", "timestamp", begin=one_year_prior_date_string + " 09:30:00", 
                 end=yesterdays_date_string + " 16:00:00", 
                 interval="1 second", random=True )
@@ -73,12 +79,18 @@ dfTestData2 = testDataSpec.build()
 # COMMAND ----------
 
 # DBTITLE 1,Preview the data
-display(dfTestData2.orderBy("TIMESTAMP"))
+from pyspark.sql.functions import col
+display(dfTestData2.orderBy("TIMESTAMP").drop(col("id")))
 
 # COMMAND ----------
 
 # DBTITLE 1,Write to disk
-dfTestData2.orderBy("TIMESTAMP").write.mode('overwrite').saveAsTable("stock_demo_data.stock_trades")
+from pyspark.sql.functions import col
+(dfTestData2
+ .orderBy("TIMESTAMP")
+ .drop(col("id"))
+ .write.mode('overwrite')
+ .saveAsTable("stock_demo_data.stock_trades"))
 
 # COMMAND ----------
 
@@ -137,26 +149,33 @@ master_df = reduce(DataFrame.unionAll, array_of_dfs)
 # COMMAND ----------
 
 # DBTITLE 1,Preview daily stock data
-display(master_df.orderBy("TIMESTAMP", "SYMBOL"))
+from pyspark.sql.functions import col
+display(master_df.orderBy("TIMESTAMP", "SYMBOL").drop(col("id")))
 
 # COMMAND ----------
 
 # DBTITLE 1,Write to disk
-master_df.write.mode('overwrite').saveAsTable("stock_demo_data.stock_daily_stats")
+from pyspark.sql.functions import col
+(master_df
+ .drop(col("id"))
+ .write.mode('overwrite')
+ .saveAsTable("stock_demo_data.stock_daily_stats"))
 
 # COMMAND ----------
 
 import tecton
 
 #Replace variables your own Tecton API Service Account Key and Tecton URL
-token = dbutils.secrets.get(scope="nicklee", key="TECTON_API_KEY") 
-tecton_url = dbutils.secrets.get(scope="nicklee", key="API_SERVICE")
+token = dbutils.secrets.get(scope="nicklee", key="STAGING_TECTON_API_KEY") 
+tecton_url = dbutils.secrets.get(scope="nicklee", key="STAGING_API_SERVICE")
 
-tecton.set_credentials(token)
-tecton.conf.set("TECTON_CLUSTER_NAME", "tecton-production")
+tecton.set_credentials(token, tecton_url=tecton_url)
+tecton.conf.set("TECTON_CLUSTER_NAME", "tecton-staging")
 tecton.test_credentials()
 
-ws = tecton.get_workspace("stock_demo_workspace") 
+#Get your target workspace in Tecton
+#Most of this notebook will work with a development workspace, but you must deploy to a live workspace to enable online serving. 
+ws = tecton.get_workspace("nicklee-staging-live") 
 
 # COMMAND ----------
 
@@ -191,4 +210,70 @@ stock_trades.validate()
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC
+# MAGIC ####The below code blocks will only work after you have defined your feature views and run "tecton apply" on your workspace. 
 
+# COMMAND ----------
+
+# DBTITLE 1,Optional: Streaming Data Simulator
+#Leave this code running to simulate a streaming data stream with Tecton's Ingest API 
+import requests, json, uuid
+from datetime import datetime
+import time
+import random
+
+looping = False #Change to True if you want to kick off a constant stream of data to the Ingest API. Let code run in the background to simulate stream. 
+verbose = True
+
+def stream_a_trade(verbose = False): 
+  current_timestamp_formatted = datetime.utcnow().strftime("%Y-%m-%d" + "T" + "%H:%M:%S" + "Z") #The expected Zulu Time format for Tecton
+
+  symbol = random.choice(["ABC", "DEF", "GHI", "JKLM", "NOP"])
+  data = {
+    "workspace_name": "nicklee-staging-live", #replace with your workspace name 
+    "dry_run": False,
+    "records": {
+      "stock_transactions_event_source": [
+        {
+          "record": {
+            "trade_identification": str(uuid.uuid4()),
+            "SYMBOL": symbol,
+            "QUANTITY": random.randint(1,1000),
+            "PRICE": random.randint(100,110), 
+            "TIMESTAMP": current_timestamp_formatted
+          }
+        }
+      ]
+    }
+  }
+
+  ingest_endpoint = 'https://preview.staging.tecton.ai/ingest' #replace this with your correct endpoint https://preview.<your_cluster>.tecton.ai/ingest if you have access to the preview
+
+  r = requests.post(ingest_endpoint, data=json.dumps(data), headers={'Authorization': 'Tecton-key ' + token})  # This will only work for a live workspace
+  
+  if verbose:
+    print(json.dumps(data, indent=4))
+    print(r.json())
+
+while looping is True: 
+  stream_a_trade(verbose = verbose)
+  time.sleep(3) #sleep 3 seconds 
+
+stream_a_trade(verbose=True)
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col, asc, desc 
+stock_daily_transactions = ws.get_feature_view("live_trading_stats")
+
+#You can confirm that our Online Store is being updated with streaming features by viewing the freshness 
+stock_daily_transactions.summary()
+
+# COMMAND ----------
+
+#Here is a quick check of the Online Store; you can see features are being updated on-the-fly for each symbol as new data is streaming in from Ingest API. 
+#Try submitting more data and re-running this code block to see the changes. 
+
+for symbol in ["ABC", "DEF", "GHI", "JKLM", "NOP"]: 
+  print(symbol + ": " + str(stock_daily_transactions.get_online_features(join_keys={'SYMBOL':symbol}).to_dict()))

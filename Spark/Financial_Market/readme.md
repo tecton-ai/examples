@@ -8,3 +8,5 @@ This feature repository includes code snippets that show how to build feature pi
 3. Run "tecton apply" in the Financial_Market directory to set up all of the data sources, feature views, and on-demand features. 
 4. If all of the above were successful, go back into Databricks and run through the second notebook in sample_notebooks. You'll need to replace the credential variables with your own Tecton credentials. This notebook shows how to access the Tecton features we just created. 
 
+#### v0.7b Streaming Dependency
+The Streaming Feature View demonstrates a transformation on PushSource data ingested through Tecton's Ingest API. This capability is only available in [Tecton v0.7b](https://docs.tecton.ai/using-the-ingestion-api#transformations). You can avoid the 0.7b dependency by removing the Streaming Feature View before you run "tecton apply". 
