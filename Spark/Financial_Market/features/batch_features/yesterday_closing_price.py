@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
     description="The previous day's closing price (so you can do a day-to-day comparison)",
     name = "yesterday_closing_price",
     ttl=timedelta(days=3650)
-) #crazy enough to work!
+)
 def yesterday_closing_price(stock_trades_batch):
     return f"""
         SELECT
