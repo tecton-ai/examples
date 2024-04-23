@@ -14,5 +14,5 @@ fs = FeatureService(
         zscore_current_transaction,
         geocoded_address
     ],
-    on_demand_environment="tecton-python-extended:0.3"
+    on_demand_environment="tecton-python-extended:0.5"
 )

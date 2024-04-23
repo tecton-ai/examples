@@ -11,7 +11,7 @@ output_schema = [Field("city", String),Field("country", String)]
     name="geocoded_address",
     mode="python",
     schema=output_schema,
-    environments=["tecton-python-extended:0.3"],
+    environments=["tecton-python-extended:0.5"],
     owner="vince@tecton.ai",
     description="""City and Country of the current transaction 
     calculated from geocoding the merchant latitute and longitude through the OpenStreetMap API
