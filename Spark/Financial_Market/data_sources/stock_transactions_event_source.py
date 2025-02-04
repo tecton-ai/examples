@@ -1,4 +1,4 @@
-from tecton import PushSource, HiveConfig
+from tecton import PushConfig, HiveConfig, StreamSource
 from tecton.types import String, Int64, Timestamp, Field
 
 input_schema = [
@@ -23,9 +23,10 @@ input_schema = [
 #     )
 #     return df
 
-stock_transactions_event_source = PushSource(
+stock_transactions_event_source = StreamSource(
     name="stock_transactions_event_source",
     schema=input_schema,
+    stream_config=PushConfig(),
     batch_config=HiveConfig(
         database="stock_demo_data",
         table="stock_trades",
@@ -33,6 +34,5 @@ stock_transactions_event_source = PushSource(
         timestamp_field="TIMESTAMP",
     ),
     description="Push Source for second-by-second trade information",
-    owner="nlee@tecton.ai",
     tags={"release": "production"},
 )

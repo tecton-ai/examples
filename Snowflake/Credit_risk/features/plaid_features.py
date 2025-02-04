@@ -1,12 +1,12 @@
-from tecton import RequestSource, on_demand_feature_view, transformation, const
-from tecton.types import String, Int64, Field, Struct, Timestamp
+from tecton import RequestSource, realtime_feature_view, Attribute
+from tecton.types import String, Int64, Field
 
 
-@on_demand_feature_view(
+@realtime_feature_view(
     description='''Total expenses accross a user's bank accounts, computed in real-time from the Plaid Transactions API payload''',
     sources=[RequestSource(schema=[Field('TIMESTAMP', String), Field('PLAID_PAYLOAD', String)])],
     mode='python',
-    schema=[Field('user_total_spend_last_%s_days'%i, Int64)  for i in range(30,150,30)]
+    features=[Attribute('user_total_spend_last_%s_days'%i, Int64) for i in range(30,150,30)]
 )
 def user_plaid_features(request):
     from datetime import datetime, timedelta

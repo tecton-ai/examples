@@ -1,10 +1,11 @@
-from tecton import batch_feature_view, FilteredSource, Aggregation
-from entities import stock
-from data_sources.stock_trades import stock_trades
+from tecton import batch_feature_view, Aggregate
+from Financial_Market.entities import stock
+from Financial_Market.data_sources.stock_trades import stock_trades
 from datetime import datetime, timedelta
+from tecton.types import Field, Float64, Int64
 
 @batch_feature_view(
-    sources=[FilteredSource(stock_trades)],
+    sources=[stock_trades],
     entities=[stock],
     mode="spark_sql",
     online=True,
@@ -13,11 +14,11 @@ from datetime import datetime, timedelta
     batch_schedule=timedelta(minutes=60),
     timestamp_field="TIMESTAMP",
     description="Analysis on stock trades made each day.",
-    aggregations = [
-        Aggregation(column="PRICE", function="min", time_window=timedelta(minutes=60)),
-        Aggregation(column="PRICE", function="max", time_window=timedelta(minutes=60)),
-        Aggregation(column="TOTAL_SHARES", function="sum", time_window=timedelta(minutes=60)),
-        Aggregation(column="DOLLAR_VOLUME", function="sum", time_window=timedelta(minutes=60))
+    features = [
+        Aggregate(input_column=Field("PRICE", Float64), function="min", time_window=timedelta(minutes=60)),
+        Aggregate(input_column=Field("PRICE", Float64), function="max", time_window=timedelta(minutes=60)),
+        Aggregate(input_column=Field("TOTAL_SHARES", Int64), function="sum", time_window=timedelta(minutes=60)),
+        Aggregate(input_column=Field("DOLLAR_VOLUME", Float64), function="sum", time_window=timedelta(minutes=60))
     ],
     aggregation_interval=timedelta(minutes=60),
     name = "daily_transactions_stats"

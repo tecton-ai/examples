@@ -1,20 +1,19 @@
-from tecton import on_demand_feature_view
-from tecton.types import String, Timestamp, Float64, Field, Int64
+from tecton import realtime_feature_view
+from tecton.types import Float64, Int64, Field, String, Timestamp
 from Recommender_system.features.book_metadata_features import book_metadata_features
 from Recommender_system.features.user_recent_ratings import user_recent_ratings
+from tecton import Attribute
 
-output_schema = [
-    Field('avg_rating_for_candidate_book_category', Float64),
-    Field('num_rating_for_candidate_book_category', Int64),
-    Field('avg_rating_for_candidate_book_author', Float64),
-    Field('num_rating_for_candidate_book_author', Int64),
-]
-
-@on_demand_feature_view(
+@realtime_feature_view(
     description='''Aggregate rating metrics for the current user for the candidate book's category and author.''',
     sources=[book_metadata_features, user_recent_ratings],
     mode='python',
-    schema=output_schema
+    features=[
+        Attribute('avg_rating_for_candidate_book_category', Float64),
+        Attribute('num_rating_for_candidate_book_category', Int64),
+        Attribute('avg_rating_for_candidate_book_author', Float64),
+        Attribute('num_rating_for_candidate_book_author', Int64),
+    ]
 )
 def user_ratings_similar_to_candidate_book(book_metadata_features, user_recent_ratings):
     import json

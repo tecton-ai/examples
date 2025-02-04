@@ -1,17 +1,14 @@
-from tecton import RequestSource, on_demand_feature_view
+from tecton import RequestSource, realtime_feature_view, Attribute
 from tecton.types import String, Timestamp, Float64, Field
-from features.batch_features.todays_closing_price import todays_closing_price
-from features.batch_features.yesterday_closing_price import yesterday_closing_price
-
-#This ODFV does not require a request input schema; it merely grabs two feature views and makes a real-time calculation.
-output_schema = [Field("percent_daily_return", Float64)]
+from Financial_Market.features.batch_features.todays_closing_price import todays_closing_price
+from Financial_Market.features.batch_features.yesterday_closing_price import yesterday_closing_price
 
 # Get FV for yesterday's closing price and today's closing price, and then do a calculation
-@on_demand_feature_view(
+@realtime_feature_view(
     sources=[yesterday_closing_price, todays_closing_price],
     mode="python",
-    schema=output_schema,
     description="What is the percent of daily returns after the close today?",
+    features=[Attribute("percent_daily_return", Float64)]
 )
 
 def percentage_daily_returns(yesterday_closing_price, todays_closing_price):

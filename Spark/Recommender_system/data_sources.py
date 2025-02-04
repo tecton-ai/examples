@@ -6,6 +6,7 @@ books_batch = BatchSource(
     batch_config=FileConfig(
         uri="s3://tecton-demo-data/apply-book-recsys/books_v3.parquet",
         file_format="parquet",
+        timestamp_field='created_at',
     ),
     owner='jake@tecton.ai',
     tags={'release': 'production'},

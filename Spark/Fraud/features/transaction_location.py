@@ -1,16 +1,18 @@
-from tecton import on_demand_feature_view, RequestSource
+from tecton import realtime_feature_view, RequestSource, Attribute
 from tecton.types import Field, Float64, String
 
 request_schema = [Field("merch_lat", Float64), Field("merch_long", Float64)]
 transaction_request = RequestSource(schema=request_schema)
-output_schema = [Field("city", String),Field("country", String)]
 
 
-@on_demand_feature_view(
+@realtime_feature_view(
     sources=[transaction_request],
     name="geocoded_address",
     mode="python",
-    schema=output_schema,
+    features=[
+        Attribute("city", String),
+        Attribute("country", String)
+    ],
     environments=["tecton-python-extended:0.5"],
     owner="vince@tecton.ai",
     description="""City and Country of the current transaction 

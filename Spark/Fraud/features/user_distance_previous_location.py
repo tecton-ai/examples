@@ -1,18 +1,18 @@
 from Fraud.features.user_last_transaction_location import user_last_transaction_location
 from tecton.types import String, Float64, Field
-from tecton import on_demand_feature_view, RequestSource
+from tecton import realtime_feature_view, RequestSource, Attribute
 
 request_schema = [Field('user_id', String),
                 Field('merch_lat', Float64),
                 Field('merch_long', Float64)
 ]
 
-@on_demand_feature_view(
+@realtime_feature_view(
     description='''Distance between current and previous transaction location for a user in km,
                 using Haversine formula''',
     sources=[RequestSource(schema=request_schema), user_last_transaction_location],
     mode='python',
-    schema=[Field('distance_previous_transaction', Float64)]
+    features=[Attribute('distance_previous_transaction', Float64)]
 )
 def distance_previous_transaction(transaction_request, user_last_transaction_location):
     from math import sin, cos, sqrt, atan2, radians
