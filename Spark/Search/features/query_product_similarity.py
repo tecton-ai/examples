@@ -1,6 +1,6 @@
 import tecton
-from tecton import RequestSource, on_demand_feature_view
-from tecton.types import String, Timestamp, Float64, Field, Int64,Bool
+from tecton import RequestSource, Attribute, realtime_feature_view
+from tecton.types import String, Float64, Field
 from Search.features.product_attributes import product_title
 
 request_schema = [
@@ -9,18 +9,16 @@ request_schema = [
                   ]
 search_query = RequestSource(schema=request_schema)
 
-output_schema = [
-  Field('jaccard_similarity_query_token_title_token', Float64)
-]
 
-
-@on_demand_feature_view(
+@realtime_feature_view(
   description='''Jaccard similarity between the tokenized input query and the product title, computed in real-time''',  
   sources=[search_query, product_title],
-  schema=output_schema,
+  features=[
+    Attribute('jaccard_similarity_query_token_title_token', Float64)
+  ],
   mode='python'
 )
-def search_query_product_similarity(search_query, product_attributes, product_title):
+def search_query_product_similarity(search_query, product_title):
   def jaccard(list1, list2):
     intersection = len(list(set(list1).intersection(list2)))
     union = (len(list1) + len(list2)) - intersection

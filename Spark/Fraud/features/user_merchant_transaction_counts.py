@@ -1,6 +1,7 @@
 from Fraud.data_sources import transactions_stream
 from Fraud.entities import user, merchant
-from tecton import stream_feature_view, Aggregation 
+from tecton import stream_feature_view, Aggregate
+from tecton.types import Field, String
 from datetime import datetime, timedelta
 
 @stream_feature_view(
@@ -12,11 +13,12 @@ from datetime import datetime, timedelta
     offline=True,
     feature_start_time=datetime(2021,1,1),
     aggregation_interval=timedelta(minutes=5),
-    aggregations=[
-        Aggregation(column='transaction_id', function='count', time_window=timedelta(minutes=30))
+    timestamp_field='timestamp',
+    features=[
+        Aggregate(input_column=Field('transaction_id', String), function='count', time_window=timedelta(minutes=30))
     ],
     batch_schedule=timedelta(days=1)
 )
 def user_merchant_transactions_count(transactions_stream):
-  from pyspark.sql import functions as f
-  return transactions_stream.select('user_id','merchant','transaction_id','timestamp')
+    from pyspark.sql import functions as f
+    return transactions_stream.select('user_id', 'merchant', 'transaction_id', 'timestamp')
