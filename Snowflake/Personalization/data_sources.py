@@ -1,4 +1,4 @@
-from tecton import BatchSource, SnowflakeConfig, PushSource
+from tecton import BatchSource, SnowflakeConfig
 from tecton.types import Field, Int64, String, Timestamp, Array
 
 gaming_user_batch = BatchSource(
@@ -7,6 +7,9 @@ gaming_user_batch = BatchSource(
       database="VINCE_DEMO_DB",
       schema="PUBLIC",
       table="ONLINE_GAMING_USERS",
+      url="https://<your-cluster>.<your-snowflake-region>.snowflakecomputing.com/",
+      warehouse="COMPUTE_WH",
+      timestamp_field='TIMESTAMP',
     ),
 )
 
@@ -15,7 +18,10 @@ gaming_transactions_batch = BatchSource(
     batch_config=SnowflakeConfig(
       database="VINCE_DEMO_DB",
       schema="PUBLIC",
-      table="ONLINE_GAMING_TRANSACTIONS"
+      table="ONLINE_GAMING_TRANSACTIONS",
+      url="https://<your-cluster>.<your-snowflake-region>.snowflakecomputing.com/",
+      warehouse="COMPUTE_WH",
+      timestamp_field='TIMESTAMP',
     ),
 )
 
@@ -29,13 +35,19 @@ input_schema = [
 
 # Declare a PushSource with a name, schema and a batch_config parameters
 # See the API documentation for BatchConfig
-gaming_event_source = PushSource(
-                        name="gaming_event_source",
-                        schema=input_schema,
-                        batch_config=SnowflakeConfig(
-                        database="VINCE_DEMO_DB",
-                        schema="PUBLIC",
-                        table="ONLINE_GAMING_EVENTS"
-                        ),
-                        description="Push source for game played events"
-                        )
+from tecton import StreamSource, PushConfig
+
+gaming_event_source = StreamSource(
+    name="gaming_event_source",
+    schema=input_schema,
+    batch_config=SnowflakeConfig(
+        database="VINCE_DEMO_DB",
+        schema="PUBLIC",
+        table="ONLINE_GAMING_EVENTS",
+        url="https://<your-cluster>.<your-snowflake-region>.snowflakecomputing.com/",
+        warehouse="COMPUTE_WH",
+        timestamp_field='TIMESTAMP',
+    ),
+    stream_config=PushConfig(),
+    description="Push source for game played events"
+)
